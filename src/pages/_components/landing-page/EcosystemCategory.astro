@@ -8,12 +8,12 @@ type Props = {
 const { id, tab, class: className } = Astro.props;
 ---
 
-<li
-  data-tab={tab}
-  role='tabpanel'
-  aria-labelledby={tab}
-  class:list={[className]}
-  id={`ecosystem-panel-${id}`}
+<section
+	data-tab={tab}
+	role="tabpanel"
+	aria-labelledby={tab}
+	class:list={[className]}
+	id={`ecosystem-panel-${id}`}
 >
-  <slot />
-</li>
+	<slot />
+</section>

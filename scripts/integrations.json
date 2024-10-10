@@ -15,11 +15,20 @@
 		"frameworks": {
 			"keywords": ["renderer"]
 		},
+		"loaders": {
+			"keywords": ["astro-loader"]
+		},
 		"performance+seo": {
 			"keywords": ["seo", "performance", "perf", "optimization"]
 		},
 		"toolbar": {
 			"keywords": ["devtools", "dev-overlay", "dev-toolbar"]
+		},
+		"utilities": {
+			"keywords": ["tooling", "utils", "utility"]
+		},
+		"media": {
+			"keywords": ["media", "image", "images", "video", "audio"]
 		}
 	},
 	"featured": [
@@ -43,7 +52,6 @@
 		"astro-json-element"
 	],
 	"toolbar": ["@storyblok/astro", "@spotlightjs/astro"],
-	"allowlist": [],
 	"blocklist": [
 		"@advanced-astro/capo",
 		"@astrojs/db",
@@ -335,6 +343,18 @@
 		"astro-font": {
 			"homepageUrl": "https://launchfa.st/features/astro-font",
 			"description": "Automatically optimize your custom fonts, local fonts, fonts over any CDN, and Google fonts for performance."
+		},
+		"astro-vtbot": {
+			"image": "/assets/integrations/bag-of-tricks.svg"
+		},
+		"@studiocms/blog": {
+			"image": "/assets/integrations/studiocms-master.svg"
+		},
+		"studiocms": {
+			"image": "/assets/integrations/studiocms-master.svg"
+		},
+		"astro-sst": {
+			"image": "/assets/integrations/sst.svg"
 		}
 	}
 }

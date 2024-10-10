@@ -1,21 +1,30 @@
-import { format, subDays } from "date-fns";
+import { z } from 'astro/zod';
+import { format, subDays } from 'date-fns';
+import pLimit from 'p-limit';
 
-async function fetchJson(url) {
-	const res = await fetch(url);
+const fetchLimit = pLimit(10);
 
-	if (!res.ok) {
-		console.error(`[${url}] ${res.status} ${res.statusText}`);
-		throw new Error();
-	}
+/**
+ * @param {string | URL} url
+ */
+function fetchJson(url) {
+	return fetchLimit(async () => {
+		const res = await fetch(url);
 
-	return await res.json();
+		if (!res.ok) {
+			console.error(`[${url}] ${res.status} ${res.statusText}`);
+			throw new Error();
+		}
+
+		return await res.json();
+	});
 }
 
-const API_BASE_URL = "https://api.npmjs.org/";
-const REGISTRY_BASE_URL = "https://registry.npmjs.org/";
+const API_BASE_URL = 'https://api.npmjs.org/';
+const REGISTRY_BASE_URL = 'https://registry.npmjs.org/';
 
-const END_DATE = format(new Date(), "yyyy-MM-dd");
-const START_DATE = format(subDays(new Date(), 30), "yyyy-MM-dd");
+const END_DATE = format(new Date(), 'yyyy-MM-dd');
+const START_DATE = format(subDays(new Date(), 30), 'yyyy-MM-dd');
 
 const PAGE_SIZE = 100;
 
@@ -25,20 +34,44 @@ const PAGE_SIZE = 100;
  * @param {string} pkg Name of the package published on npm
  * @returns {Promise<number>} The number of weekly downloads for the package
  */
-export function fetchDownloadsForPackage(pkg) {
+export async function fetchDownloadsForPackage(pkg) {
 	return fetchJson(`${API_BASE_URL}downloads/point/${START_DATE}:${END_DATE}/${pkg}`)
 		.then((res) => res.downloads)
 		.catch(() => 0);
 }
 
+const npmRegistrySchema = z.object({
+	name: z.string(),
+	description: z.string().optional(),
+	homepage: z.string().url().optional(),
+	keywords: z.string().array().default([]),
+	repository: z
+		.union([
+			z.string(),
+			// If the package.json’s repo field is an object, convert it to a string:
+			z
+				.object({ url: z.string() })
+				.transform(({ url }) => url),
+		])
+		.optional(),
+	time: z.object({ created: z.string(), modified: z.string() }),
+});
+
 /**
  * Gets details for a package from the npm registry
  *
  * @param {string} pkg Name of the package published to npm
- * @returns {Promise<any>} JSON data as returned by the npm registry
+ * @returns JSON data as returned by the npm registry
  */
-export function fetchDetailsForPackage(pkg) {
-	return fetchJson(`${REGISTRY_BASE_URL}${pkg}`);
+export async function fetchDetailsForPackage(pkg) {
+	const registryData = await fetchJson(`${REGISTRY_BASE_URL}${pkg}`);
+	const result = npmRegistrySchema.safeParse(registryData);
+	if (result.success) {
+		return result.data;
+	}
+	const { message, path } = result.error.issues[0];
+	console.error(`Failed to parse metadata for "${pkg}": ${message} at ${path.join('.')}`);
+	return;
 }
 
 /**
@@ -48,17 +81,17 @@ export function fetchDetailsForPackage(pkg) {
  * @param {string | undefined} ranking The sort order for results, default: `quality`
  * @returns {Promise<Map<string, any>>} Map of search results, keyed by package name
  */
-export async function searchByKeyword(keyword, ranking = "quality") {
+export async function searchByKeyword(keyword, ranking = 'quality') {
 	const objects = [];
 	let total = -1;
 	let page = 0;
 
 	do {
 		const url = new URL(`${REGISTRY_BASE_URL}-/v1/search`);
-		url.searchParams.set("text", `keywords:${keyword}`);
-		url.searchParams.set("ranking", ranking);
-		url.searchParams.set("size", PAGE_SIZE);
-		url.searchParams.set("from", page++ * PAGE_SIZE);
+		url.searchParams.set('text', `keywords:${keyword}`);
+		url.searchParams.set('ranking', ranking);
+		url.searchParams.set('size', String(PAGE_SIZE));
+		url.searchParams.set('from', String(page++ * PAGE_SIZE));
 
 		const results = await fetchJson(url.toString());
 
@@ -75,8 +108,8 @@ export async function searchByKeyword(keyword, ranking = "quality") {
 		.filter(({ package: pkg }) => {
 			// remove any published forks of official @astrojs integrations
 			return (
-				pkg.links.repository !== "https://github.com/withastro/astro" ||
-				pkg.name.startsWith("@astrojs/")
+				pkg.links.repository !== 'https://github.com/withastro/astro' ||
+				pkg.name.startsWith('@astrojs/')
 			);
 		})
 		.reduce((acc, next) => {

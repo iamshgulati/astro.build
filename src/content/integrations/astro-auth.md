@@ -1,10 +1,10 @@
 ---
-name: "astro-auth"
-title: "astro-auth"
+name: astro-auth
+title: astro-auth
 description: "TODO:"
 categories:
-  - "css+ui"
-npmUrl: "https://www.npmjs.com/package/astro-auth"
-homepageUrl: "TODO:"
-downloads: 14
+  - uncategorized
+npmUrl: https://www.npmjs.com/package/astro-auth
+homepageUrl: https://www.npmjs.com/package/astro-auth
+downloads: 36
 ---
