@@ -1,7 +1,6 @@
 ---
-import { Icon } from "astro-icon";
-import ExternalLink from "~/components/ExternalLink.astro";
-import type { SocialLink } from "~/data/site-info.js";
+import { Icon } from 'astro-icon/components';
+import type { SocialLink } from '~/data/site-info.js';
 
 export type Props = {
 	links: SocialLink[];
@@ -10,13 +9,13 @@ export type Props = {
 const { links } = Astro.props;
 ---
 
-<div class="flex items-center gap-4">
+<div class="flex items-center gap-1 flex-wrap">
 	{
 		links.map((link) => (
-			<ExternalLink class="link flex items-center gap-2 text-white" href={link.href}>
+			<a rel="me" class="link flex items-center gap-2 p-3 text-white" href={link.href}>
 				<span class="sr-only">{link.text}</span>
-				<Icon name={link.icon} size={24} aria-hidden="true" />
-			</ExternalLink>
+				<Icon name={link.icon} size={28} class="s-6 sm:s-7" aria-hidden="true" />
+			</a>
 		))
 	}
 </div>

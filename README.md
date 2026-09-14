@@ -8,15 +8,13 @@ The [themes catalog](https://astro.build/themes/) is now powered by the [Astro D
 
 ## Updating the Showcase
 
-The [showcase](https://astro.build/showcase) doesn't depend on any data from GitHub or NPM. All showcase data is pulled from the [content collection](/src/content/showcase/). Similar to themes, optimized images should be saved to the collection's [\_images directory](/src/content/showcase/_images/), ideally as format with a `{image}.webp` file at 800px wide and `{image}@2x.webp` at 1600px wide.
+The [showcase](https://astro.build/showcase) doesn't depend on any data from GitHub or NPM. All showcase data is pulled from the [content collection](/src/content/showcase/). Optimized images should be saved to the collection's [directory](/src/content/showcase/) in a `.webp` file, have the dimensions of 1600 × 900 pixels, and named after the site’s domain, e.g. `example.com.webp`.
 
 A weekly [GitHub workflow](/.github/workflows/weekly.yaml) pulls URLs posted in [a dedicated GitHub discussion](https://github.com/withastro/roadmap/discussions/521) and opens a PR to add data and screenshots for these sites to the repo. You can also run this script locally and commit the results manually:
 
 ```sh
 pnpm update:showcase
 ```
-
-> TODO: A future PR will migrate to `astro:assets` for image optimization and get away from the manual image optimization shenanigans.
 
 ## Updating Integrations
 
@@ -30,15 +28,27 @@ The [blog collection](/src/content/blog/) is setup to support MDX blog posts wit
 
 Blog post cover and social images are set as frontmatter properties and should point reference the `_images` directory, ex: `coverImage: "/src/content/blog/_images/post-1/cover.webp"`.
 
-## Web Vitals monitoring
+## Contributing
 
-Site performance is tracked using [`@astrojs/web-vitals`](https://www.npmjs.com/package/@astrojs/web-vitals) and Astro Studio.
+### Large Static Assets
 
-There are two separate projects in Astro Studio to separate production and development/preview data:
+Cloudflare Workers has a 25 MB per-file size limit for static assets. Files that exceed this limit are hosted on an R2 bucket and served via `site-assets.astro.build`.
 
-- Production: `astrobuild`
-- Development: `astrobuild-preview-deploys`
+To upload a new large asset (requires access to the Cloudflare account):
 
-These are both part of the `Astro` team in Studio.
+1. Install [Wrangler](https://developers.cloudflare.com/workers/wrangler/) and log in if you haven't already:
+   ```sh
+   pnpm add -g wrangler
+   wrangler login
+   ```
 
-If table schema changes need to be pushed, remember to push them to each of these Studio projects.
+2. Upload the file to the `site-assets` R2 bucket:
+   ```sh
+   wrangler r2 object put site-assets/<path> --file <local-file> --content-type <mime-type>
+   ```
+   For example:
+   ```sh
+   wrangler r2 object put site-assets/blog/launch-video.mp4 --file ./launch-video.mp4 --content-type video/mp4
+   ```
+
+3. Reference the file using `https://site-assets.astro.build/<path>` in your source code.

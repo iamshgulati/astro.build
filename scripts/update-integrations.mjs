@@ -1,216 +1,240 @@
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import matter from "gray-matter";
-import yaml from "json-to-pretty-yaml";
-import slugify from "slugify";
-import glob from "tiny-glob";
+// @ts-check
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { limitedFetch } from './fetch.mjs';
+import integrations from './integrations.json' with { type: 'json' };
 import {
-	allowlist,
 	badgeForPackage,
 	blocklist,
 	getCategoriesForKeyword,
 	getOverrides,
 	getToolbarPackagePriority,
-	isNewPackage,
-} from "./integrations.mjs";
-import { markdownToPlainText } from "./markdown.mjs";
-import { fetchDetailsForPackage, fetchDownloadsForPackage, searchByKeyword } from "./npm.mjs";
+} from './integrations.mjs';
+import { markdownToPlainText } from './markdown.mjs';
+import { fetchPackageCreationTime, searchByKeywords } from './npm.mjs';
 
+/** @param {string} pkg */
 function isOfficial(pkg) {
-	return pkg.startsWith("@astrojs/");
+	return pkg.startsWith('@astrojs/');
 }
 
+/** @param {string} url */
 function sanitizeGitHubUrl(url) {
-	return url
-		.replace("git+", "")
-		.replace(".git", "")
-		.replace("git:", "https:")
-		.replace("git@github.com:", "https://github.com/");
+	const sanitizedUrl = url
+		.replace('git+', '')
+		.replace('.git', '')
+		.replace('git:', 'https:')
+		.replace('git@github.com:', 'https://github.com/');
+
+	// Sometimes the repository field is just a GitHub repo path, e.g. `owner/repo`.
+	// In that case, we want to convert it to a full GitHub URL.
+	if (/^[a-z0-9_-]+\/[a-z0-9_-]+$/i.test(sanitizedUrl)) {
+		return `https://github.com/${sanitizedUrl}`;
+	}
+
+	return sanitizedUrl;
 }
 
 function updateLastModified() {
 	const pathname = path.resolve(
 		path.dirname(fileURLToPath(import.meta.url)),
-		"../src/data/last-modified.json",
+		'../src/data/last-modified.json',
 	);
-	const json = fs.readFileSync(pathname, { encoding: "utf8" });
+	const json = fs.readFileSync(pathname, { encoding: 'utf8' });
 	const data = JSON.parse(json);
 	data.integrations = new Date().toUTCString();
-	fs.writeFileSync(pathname, JSON.stringify(data, null, "\t"), { encoding: "utf8" });
+	fs.writeFileSync(pathname, JSON.stringify(data, null, '\t'), { encoding: 'utf8' });
 }
 
-async function getIntegrationFiles() {
-	return await glob("src/content/integrations/*.md", {
-		cwd: path.resolve(fileURLToPath(import.meta.url), "../.."),
-	});
+/**
+ * @typedef {NonNullable<Awaited<ReturnType<typeof applyOverrides>>>} IntegrationData
+ */
+
+/**
+ * @returns {IntegrationData[]}
+ */
+function getIntegrationsData() {
+	try {
+		const rawJson = fs.readFileSync('src/content/integrations.json', 'utf-8');
+		return JSON.parse(rawJson);
+	} catch (error) {
+		console.error('Error reading integrations data:', error);
+		return [];
+	}
 }
 
-function normalizePackageDetails(data, pkg) {
+/**
+ * @param {IntegrationData[]} data
+ */
+function setIntegrationsData(data) {
+	// Sort by package name to ensure consistent order and clean git diffs.
+	data.sort((a, b) => a.id.localeCompare(b.id));
+	fs.writeFileSync('src/content/integrations.json', JSON.stringify(data, null, '\t'), 'utf-8');
+}
+
+/**
+ * @param {Awaited<ReturnType<typeof searchByKeywords>>[number] & { created: string }} data
+ */
+function normalizePackageDetails(data) {
 	const keywordCategories = (data.keywords ?? []).flatMap(getCategoriesForKeyword);
 
-	const toolbar = getToolbarPackagePriority(pkg);
-	const official = isOfficial(pkg);
+	if (keywordCategories.length === 0) {
+		keywordCategories.push('uncategorized');
+	}
+
+	const toolbar = getToolbarPackagePriority(data.name);
+	const official = isOfficial(data.name);
+	const badge = badgeForPackage(data);
 
 	const otherCategories = [
-		official ? "official" : undefined,
-		toolbar ? "toolbar" : undefined,
-		isNewPackage(data) ? "recent" : undefined,
+		official ? 'official' : undefined,
+		toolbar ? 'toolbar' : undefined,
+		badge === 'new' ? 'recent' : undefined,
 	].filter(Boolean);
 
 	const uniqCategories = Array.from(new Set([...keywordCategories, ...otherCategories]));
 
-	const npmUrl = `https://www.npmjs.com/package/${pkg}`;
+	const npmUrl = `https://www.npmjs.com/package/${data.name}`;
 
-	const repoUrl = data.repository?.url && sanitizeGitHubUrl(data.repository.url);
+	const repoUrl = data.repository && sanitizeGitHubUrl(data.repository);
 
-	const homepageUrl = data.homepage || npmUrl;
+	let homepageUrl = npmUrl;
+	// The `homepage` field is user-authored, so sometimes funky values can end up here.
+	// This is just a brief sanity check that things looks vaguely like a URL.
+	if (data.homepage?.toLowerCase().startsWith('https')) {
+		homepageUrl = data.homepage;
+	}
 
 	return {
-		name: data.name,
-		title: data.name,
+		id: data.name,
 		description: markdownToPlainText(data.description),
 		categories: uniqCategories,
 		npmUrl,
 		repoUrl,
 		homepageUrl,
 		official: official === true ? true : undefined,
+		downloads: data.downloads,
+		toolbar,
+		badge,
+		created: data.created,
 	};
 }
 
-async function fetchWithOverrides(pkg, includeDownloads = true) {
-	const details = await fetchDetailsForPackage(pkg);
-	const integrationOverrides = getOverrides(pkg) || {};
+/**
+ * @param {Awaited<ReturnType<typeof searchByKeywords>>[number] & { created: string }} details
+ */
+function applyOverrides(details) {
+	const integrationOverrides = getOverrides(details.name) || {};
 
-	const badge = badgeForPackage(details);
-	const toolbar = getToolbarPackagePriority(pkg);
-
-	const newData = {
-		...normalizePackageDetails(details, pkg),
+	return {
+		...normalizePackageDetails(details),
 		...integrationOverrides,
-		badge,
-		toolbar,
 	};
-
-	if (includeDownloads) {
-		newData.downloads = await fetchDownloadsForPackage(pkg);
-	}
-
-	return newData;
 }
 
 async function unsafeUpdateAllIntegrations() {
-	const keyword = "astro-component,withastro";
-
-	const packagesMap = await searchByKeyword(keyword);
-	const searchResults = new Set(
-		[...packagesMap.keys(), ...allowlist].filter((pkg) => !blocklist.includes(pkg)),
+	// Search the npm registry for integrations.
+	const searchResults = (await searchByKeywords(integrations.keywords)).filter(
+		({ name }) => !blocklist.includes(name),
 	);
 
-	const entries = await getIntegrationFiles();
+	const existingEntries = getIntegrationsData();
 
-	const existingIntegrations = new Set();
+	const existingPackageNames = new Set();
+	/** @type {string[]} */
 	const deprecatedIntegrations = [];
 
 	// loop through all integrations already published to the catalog
-	for (const entry of entries) {
-		const { data } = matter.read(entry);
-		existingIntegrations.add(data.name);
+	const updatedEntries = await Promise.all(
+		existingEntries.map(async (data) => {
+			existingPackageNames.add(data.id);
 
-		if (!searchResults.has(data.name)) {
-			// the integration was deprecated or removed from NPM
-			deprecatedIntegrations.push(data.name);
-			fs.rmSync(entry);
-		} else {
-			// fetch the latest NPM data, keeping any local overrides like description or icon
-			// skipping download counts here since existing integrations will be updated
-			// automatically in a separate GitHub Action.
-			const details = await fetchWithOverrides(data.name, false);
+			const searchResult = searchResults.find(({ name }) => name === data.id);
+			if (!searchResult) {
+				// the integration was deprecated or removed from NPM
+				deprecatedIntegrations.push(data.id);
+				return null;
+			}
 
-			const frontmatter = yaml.stringify({
-				...data,
-				...details,
-				badges: undefined,
-			});
+			const updatedData = applyOverrides({ ...data, ...searchResult });
 
-			fs.writeFileSync(
-				entry,
-				`---
-${frontmatter}---\n`,
-			);
+			// check if the homepageurl is valid
+			// if not, replace it by the link to the package on npm
+			let fixHomepageUrl = false;
+			try {
+				const homepageUrl = new URL(updatedData.homepageUrl);
+				if (homepageUrl.hostname === 'www.npmjs.com') {
+					fixHomepageUrl = homepageUrl.pathname !== `/package/${data.id}`;
+				} else {
+					const response = await limitedFetch(updatedData.homepageUrl, { method: 'HEAD' });
+					fixHomepageUrl = response.status >= 400;
+				}
+			} catch {
+				// such an error may occur when the hostname is unknown
+				fixHomepageUrl = true;
+			}
+			if (fixHomepageUrl) {
+				updatedData.homepageUrl = `https://www.npmjs.com/package/${data.id}`;
+			}
+
+			return updatedData;
+		}),
+	);
+
+	// find new integrations that haven't been published yet
+	const newIntegrations = searchResults.filter((pkg) => !existingPackageNames.has(pkg.name));
+
+	for (const entry of newIntegrations) {
+		const fullDetails = await fetchPackageCreationTime(entry.name);
+		if (fullDetails) {
+			const details = applyOverrides({ ...entry, created: fullDetails.time.created });
+			updatedEntries.push(details);
 		}
 	}
 
-	// find new integrations that haven't been published yet
-	const newIntegrations = Array.from(searchResults.keys()).filter(
-		(pkg) => !existingIntegrations.has(pkg),
-	);
-
-	for (const entry of newIntegrations) {
-		const details = await fetchWithOverrides(entry);
-
-		const frontmatter = yaml.stringify(details);
-
-		const slug = slugify(entry);
-		const file = path.resolve(
-			path.dirname(fileURLToPath(import.meta.url)),
-			`../src/content/integrations/${slug}.md`,
-		);
-
-		fs.writeFileSync(
-			file,
-			`---
-${frontmatter}---\n`,
-		);
-	}
-
+	setIntegrationsData(updatedEntries.filter((entry) => entry !== null));
 	updateLastModified();
 
 	// logging in case we need to audit the nightly job
 	let stats = `\n--- Update Integrations ---
-Updated: ${existingIntegrations.size - deprecatedIntegrations.length} integrations`;
+Updated: ${existingPackageNames.size - deprecatedIntegrations.length} integrations`;
 
 	if (newIntegrations.length) {
-		stats += `\n\nAdded:${newIntegrations.map((pkg) => `\n  + ${pkg}`)}`;
+		stats += `\n\nAdded:\n${newIntegrations.map((pkg) => `+ ${pkg.name}`).join('\n')}`;
 	}
 
 	if (deprecatedIntegrations.length) {
-		stats += `\n\nRemoved:${deprecatedIntegrations.map((pkg) => `\n  - ${pkg}`)}`;
+		stats += `\n\nRemoved:\n${deprecatedIntegrations.map((pkg) => `- ${pkg}`).join('\n')}`;
 	}
 
-	stats += "\n---------------------------";
+	stats += '\n---------------------------';
 
 	console.info(stats);
 }
 
 async function safeUpdateExistingIntegrations() {
-	const entries = await getIntegrationFiles();
+	const searchResults = await searchByKeywords(integrations.keywords);
+	const entries = getIntegrationsData();
 
 	for (const entry of entries) {
-		const { data } = matter.read(entry);
-
 		// only override NPM download stats for safe updates
-		const downloads = await fetchDownloadsForPackage(data.name);
-
-		const frontmatter = yaml.stringify({
-			...data,
-			downloads,
-			badges: undefined,
-		});
-
-		fs.writeFileSync(
-			entry,
-			`---
-${frontmatter}---\n`,
-		);
+		const searchResult = searchResults.find(({ name }) => name === entry.id);
+		if (!searchResult) {
+			continue;
+		}
+		entry.downloads = searchResult.downloads;
 	}
+
+	setIntegrationsData(entries);
 }
 
 const args = process.argv.slice(2);
 
-// only fetch unsafe changes like new and deprecated integrations
+// only fetch unsafe changes like new and deprecated integrations,
+// and fix wrong homepageurl (response>=400 or not responding)
 // if the --unsafe CLI flag was provided
-if (args.includes("--unsafe")) {
+if (args.includes('--unsafe')) {
 	await unsafeUpdateAllIntegrations();
 } else {
 	await safeUpdateExistingIntegrations();

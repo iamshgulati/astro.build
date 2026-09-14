@@ -1,5 +1,5 @@
-import { createEffect, createSignal } from "solid-js";
-import { EventEmitter } from "./emitter.ts";
+import { effect, signal } from '@preact/signals-core';
+import { EventEmitter } from './emitter.ts';
 
 export function createDisclosure({
 	button,
@@ -13,65 +13,65 @@ export function createDisclosure({
 	closeAt?: number;
 }) {
 	if (content.id) {
-		button.setAttribute("aria-controls", content.id);
+		button.setAttribute('aria-controls', content.id);
 	}
 
 	if (closeAt > 0) {
 		const mediaQuery = window.matchMedia(`(min-width: ${closeAt}px)`);
 
-		mediaQuery.addEventListener("change", (event: MediaQueryListEvent) => {
+		mediaQuery.addEventListener('change', (event: MediaQueryListEvent) => {
 			if (event.matches) {
-				setVisible(false);
+				visible.value = false;
 			}
 		});
 	}
 
 	const emitter = new EventEmitter<{ toggle: { visible: boolean } }>();
-	const [visible, setVisible] = createSignal(false);
+	const visible = signal(false);
 
-	createEffect(() => {
-		button.setAttribute("aria-expanded", String(visible()));
+	effect(() => {
+		button.setAttribute('aria-expanded', String(visible.value));
 
-		if (visible()) {
-			content.style.removeProperty("display");
+		if (visible.value) {
+			content.style.removeProperty('display');
 		}
 
-		if (!visible() && !animated) {
-			content.style.display = "none";
+		if (!visible.value && !animated) {
+			content.style.display = 'none';
 		}
 		/* make sure page scrolling is disabled when the menu is open */
-		if (visible()) {
-			document.documentElement.classList.add("disclosure-open");
+		if (visible.value) {
+			document.documentElement.classList.add('disclosure-open');
 		}
 
 		// run after an animation frame to let the element start at the leave state
 		requestAnimationFrame(() => {
-			if (visible()) {
-				content.dataset.open = "true";
+			if (visible.value) {
+				content.dataset.open = 'true';
 			} else {
 				delete content.dataset.open;
 			}
 		});
 	});
 
-	content.addEventListener("transitionstart", () => {});
+	content.addEventListener('transitionstart', () => {});
 
 	if (animated) {
-		content.addEventListener("transitionend", () => {
-			if (!visible()) {
-				content.style.display = "none";
-				document.documentElement.classList.remove("disclosure-open");
+		content.addEventListener('transitionend', () => {
+			if (!visible.value) {
+				content.style.display = 'none';
+				document.documentElement.classList.remove('disclosure-open');
 			}
 		});
 	}
 
-	button.addEventListener("click", () => {
-		setVisible(!visible());
+	button.addEventListener('click', () => {
+		visible.value = !visible.value;
 	});
 
-	content.addEventListener("keydown", (event) => {
-		if (event.key === "Escape") {
-			setVisible(false);
+	content.addEventListener('keydown', (event) => {
+		if (event.key === 'Escape') {
+			visible.value = false;
 			button.focus();
 		}
 	});
@@ -87,23 +87,23 @@ export function createDisclosure({
 	const handleClickOutside = (event: MouseEvent) => {
 		// close on click outside
 		if (
-			visible() &&
+			visible.value &&
 			!content.contains(event.target as Node) &&
 			!button.contains(event.target as Node)
 		) {
-			setVisible(false);
+			visible.value = false;
 			button.focus();
 		}
 	};
 
-	createEffect(() => {
-		emitter.emit("toggle", { visible: visible() });
-		if (visible()) {
-			window.addEventListener("click", handleClickOutside);
-			window.addEventListener("focusin", handleFocusLost);
+	effect(() => {
+		emitter.emit('toggle', { visible: visible.value });
+		if (visible.value) {
+			window.addEventListener('click', handleClickOutside);
+			window.addEventListener('focusin', handleFocusLost);
 		} else {
-			window.removeEventListener("click", handleClickOutside);
-			window.removeEventListener("focusin", handleFocusLost);
+			window.removeEventListener('click', handleClickOutside);
+			window.removeEventListener('focusin', handleFocusLost);
 		}
 	});
 

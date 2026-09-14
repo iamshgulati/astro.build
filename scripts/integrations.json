@@ -1,4 +1,5 @@
 {
+	"keywords": ["astro-component", "withastro", "astro-integration"],
 	"categories": {
 		"accessibility": {
 			"keywords": ["a11y", "accessibility"]
@@ -15,11 +16,20 @@
 		"frameworks": {
 			"keywords": ["renderer"]
 		},
+		"loaders": {
+			"keywords": ["astro-loader"]
+		},
 		"performance+seo": {
 			"keywords": ["seo", "performance", "perf", "optimization"]
 		},
 		"toolbar": {
 			"keywords": ["devtools", "dev-overlay", "dev-toolbar"]
+		},
+		"utilities": {
+			"keywords": ["tooling", "utils", "utility"]
+		},
+		"media": {
+			"keywords": ["media", "image", "images", "video", "audio"]
 		}
 	},
 	"featured": [
@@ -43,7 +53,6 @@
 		"astro-json-element"
 	],
 	"toolbar": ["@storyblok/astro", "@spotlightjs/astro"],
-	"allowlist": [],
 	"blocklist": [
 		"@advanced-astro/capo",
 		"@astrojs/db",
@@ -154,8 +163,14 @@
 		"@astrojs/vue": {
 			"image": "/assets/integrations/vue.svg"
 		},
+		"astro-sanity-assets": {
+			"image": "/assets/integrations/astro-sanity-assets.png"
+		},
 		"astro-div": {
 			"description": "It's only a <div />"
+		},
+		"astro-fora": {
+			"image": "/assets/integrations/astro-fora.png"
 		},
 		"astro-i18n": {
 			"image": "/assets/integrations/astro-i18n.svg"
@@ -163,13 +178,50 @@
 		"astro-integration-elm": {
 			"image": "/assets/integrations/astro-integration-elm.svg"
 		},
+		"@analogjs/astro-angular": {
+			"homepageUrl": "https://analogjs.org/docs/packages/astro-angular/overview"
+		},
 		"@chisel-ui/astro": {
 			"description": "A collection of layout primitives used as building blocks for common layout patterns.",
 			"image": "/assets/integrations/chisel-ui.svg",
 			"homepageUrl": "https://chisel-ui.dev"
 		},
+		"@edgeone/astro": {
+			"image": "/assets/integrations/@edgeone/edgeone-astro.svg"
+		},
+		"@dropinblog/astro": {
+			"image": "/assets/integrations/@dropinblog/dropinblog-astro.svg"
+		},
 		"@igor.dvlpr/astro-post-excerpt": {
-			"image": "/assets/integrations/astro-post-excerpt.png"
+			"image": "/assets/integrations/@igor.dvlpr/astro-post-excerpt.png"
+		},
+		"@igor.dvlpr/astro-easynav-button": {
+			"image": "/assets/integrations/@igor.dvlpr/astro-easynav-button.png"
+		},
+		"@igor.dvlpr/astro-escaped-component": {
+			"image": "/assets/integrations/@igor.dvlpr/astro-escaped-component.png"
+		},
+		"@igor.dvlpr/astro-saferesource": {
+			"image": "/assets/integrations/@igor.dvlpr/astro-saferesource.png"
+		},
+		"@igor.dvlpr/astro-render-component": {
+			"image": "/assets/integrations/@igor.dvlpr/astro-render-component.png"
+		},
+		"@igor.dvlpr/astro-component": {
+			"image": "/assets/integrations/@igor.dvlpr/astro-component.png"
+		},
+		"@inlang/paraglide-astro": {
+			"image": "/assets/integrations/@inlang/paraglide-astro.png",
+			"homepageUrl": "https://inlang.com/c/astro"
+		},
+		"@nuasite/agent-summary": {
+			"image": "/assets/integrations/@nuasite/nuasite-default-icon.png"
+		},
+		"@nuasite/components": {
+			"image": "/assets/integrations/@nuasite/nuasite-default-icon.png"
+		},
+		"@opacedev/astro-visual-editor": {
+			"image": "/assets/integrations/@opacedev/astro-visual-editor.svg"
 		},
 		"@storyblok/astro": {
 			"image": "/assets/integrations/storyblok.svg"
@@ -177,13 +229,50 @@
 		"@stylify/astro": {
 			"image": "/assets/integrations/stylify.svg"
 		},
+		"@urami/astro": {
+			"image": "/assets/integrations/@urami/astro.svg"
+		},
+		"@vocasync/astro": {
+			"image": "/assets/integrations/@vocasync/astro.png"
+		},
+		"@wuchale/astro": {
+			"image": "/assets/integrations/@wuchale/astro.svg"
+		},
+		"astro-bootstrap-icons": {
+			"image": "/assets/integrations/astro-bootstrap-icons.svg"
+		},
 		"astro-github-stats": {
 			"description": "Embed GitHub stats on your Astro page ✨",
 			"image": "/assets/integrations/astro-github-stats.png"
 		},
+		"astro-google-reviews": {
+			"image": "/assets/integrations/astro-google-reviews.png"
+		},
+		"astro-gtm-lite": {
+			"image": "/assets/integrations/astro-gtm-lite.svg"
+		},
 		"astro-icon": {
 			"image": "/assets/integrations/astro-icon.svg",
 			"description": "This Astro integration provides a straight-forward `Icon` component for Astro."
+		},
+		"astro-lilypond": {
+			"image": "/assets/integrations/astro-lilypond.svg",
+			"description": "Render LilyPond code to music notation in Markdown or with an Astro component."
+		},
+		"astro-llms-md": {
+			"image": "/assets/integrations/astro-llms-md.png"
+		},
+		"astro-lqip": {
+			"image": "/assets/integrations/astro-lqip.png"
+		},
+		"astro-create-portal": {
+			"image": "/assets/integrations/astro-create-portal.png"
+		},
+		"astro-seo-audit": {
+			"image": "/assets/integrations/astro-seo-audit.png"
+		},
+		"astro-sprite": {
+			"image": "/assets/integrations/astro-sprite.png"
 		},
 		"hello-astro": {
 			"image": "/assets/integrations/hello-astro.png"
@@ -210,11 +299,20 @@
 		"@lagon/astro": {
 			"image": "/assets/integrations/lagon-astro.png"
 		},
+		"astro-cloudflare-pages-headers": {
+			"image": "/assets/integrations/astro-cloudflare-pages-headers.png"
+		},
+		"astro-chat-widget": {
+			"image": "/assets/integrations/astro-chat-widget.svg"
+		},
 		"astro-navbar": {
 			"description": "A fully accessible responsive headless navigation bar for Astro. It supports mobile responsive toggle and dropdowns."
 		},
 		"astro-color-scheme": {
 			"description": "A fully headless dark mode theme toggle for Astro. it has built in support for both Dark & light mode along with the default System Auto mode."
+		},
+		"astro-command-palette": {
+			"image": "/assets/integrations/astro-command-palette.svg"
 		},
 		"astro-bootstrap": {
 			"image": "/assets/integrations/astro-bootstrap.png"
@@ -222,8 +320,23 @@
 		"astro-breadcrumbs": {
 			"image": "/assets/integrations/astro-breadcrumbs.svg"
 		},
+		"astro-electron-ts": {
+			"image": "/assets/integrations/astro-electron-ts.png"
+		},
+		"astro-html-validate": {
+			"image": "/assets/integrations/astro-html-validate.svg"
+		},
+		"astro-intl": {
+			"image": "/assets/integrations/astro-intl.svg"
+		},
+		"astro-lenis": {
+			"image": "/assets/integrations/astro-lenis.png"
+		},
 		"astro-mithril": {
 			"image": "/assets/integrations/astro-mithril.svg"
+		},
+		"astro-page-insight": {
+			"image": "/assets/integrations/astro-page-insight.png"
 		},
 		"astro-windi": {
 			"image": "/assets/integrations/astro-windi.svg"
@@ -263,6 +376,9 @@
 			"homepageUrl": "https://github.com/tigrisdata/tigris-astro#readme",
 			"image": "/assets/integrations/tigris.svg"
 		},
+		"@twocaretcat/astro-snapshot": {
+			"image": "/assets/integrations/@twocaretcat/astro-snapshot.svg"
+		},
 		"astro-internalise-css": {
 			"image": "/assets/integrations/astro-internalise-css.svg"
 		},
@@ -296,6 +412,9 @@
 		"astro-out-proxy": {
 			"image": "/assets/integrations/astro-out-proxy.png"
 		},
+		"ember-astro": {
+			"image": "/assets/integrations/ember-astro.svg"
+		},
 		"mr-world": {
 			"image": "/assets/integrations/mr-world.png"
 		},
@@ -303,6 +422,9 @@
 			"description": "Pair of beautiful Astro components in Geensnor style"
 		},
 		"@qwikdev/astro": {
+			"image": "/assets/integrations/qwik.svg"
+		},
+		"@qwik.dev/astro": {
 			"image": "/assets/integrations/qwik.svg"
 		},
 		"astro-sw": {
@@ -335,6 +457,27 @@
 		"astro-font": {
 			"homepageUrl": "https://launchfa.st/features/astro-font",
 			"description": "Automatically optimize your custom fonts, local fonts, fonts over any CDN, and Google fonts for performance."
+		},
+		"astro-vtbot": {
+			"image": "/assets/integrations/bag-of-tricks.svg"
+		},
+		"@studiocms/blog": {
+			"image": "/assets/integrations/studiocms-master.svg"
+		},
+		"studiocms": {
+			"image": "/assets/integrations/studiocms-master.svg"
+		},
+		"@voxgig/podw-astro": {
+			"image": "/assets/integrations/@voxgig/podw-astro.png"
+		},
+		"astro-sst": {
+			"image": "/assets/integrations/sst.svg"
+		},
+		"@forastro/utilities": {
+			"repoUrl": "https://github.com/louiss0/forastro"
+		},
+		"ziko-wrapper": {
+			"image": "/assets/integrations/zikojs.svg"
 		}
 	}
 }

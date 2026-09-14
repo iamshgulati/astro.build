@@ -1,86 +1,108 @@
-import { format, subDays } from "date-fns";
+// @ts-check
 
+import { z } from 'astro/zod';
+import { limitedFetch } from './fetch.mjs';
+
+/**
+ * @param {string | URL} url
+ */
 async function fetchJson(url) {
-	const res = await fetch(url);
-
-	if (!res.ok) {
-		console.error(`[${url}] ${res.status} ${res.statusText}`);
-		throw new Error();
-	}
-
+	const res = await limitedFetch(url);
 	return await res.json();
 }
 
-const API_BASE_URL = "https://api.npmjs.org/";
-const REGISTRY_BASE_URL = "https://registry.npmjs.org/";
-
-const END_DATE = format(new Date(), "yyyy-MM-dd");
-const START_DATE = format(subDays(new Date(), 30), "yyyy-MM-dd");
-
+const REGISTRY_BASE_URL = 'https://registry.npmjs.org/';
 const PAGE_SIZE = 100;
 
-/**
- * Gets the number of weekly downloads for an npm package.
- *
- * @param {string} pkg Name of the package published on npm
- * @returns {Promise<number>} The number of weekly downloads for the package
- */
-export function fetchDownloadsForPackage(pkg) {
-	return fetchJson(`${API_BASE_URL}downloads/point/${START_DATE}:${END_DATE}/${pkg}`)
-		.then((res) => res.downloads)
-		.catch(() => 0);
-}
+const npmRegistrySchema = z.object({
+	time: z.object({ created: z.string() }),
+});
+
+const npmSearchObjectSchema = z
+	.object({
+		downloads: z.object({ monthly: z.number() }),
+		package: z.object({
+			name: z.string(),
+			description: z.string().optional(),
+			keywords: z.string().array().default([]),
+			links: z.object({
+				homepage: z.string().optional(),
+				repository: z.string().optional(),
+			}),
+		}),
+	})
+	// Transform the data into the same shape returned by the single package endpoint.
+	// For optional strings we ensure they return `undefined`, if the string is empty.
+	.transform((data) => ({
+		name: data.package.name,
+		description: data.package.description || undefined,
+		homepage: data.package.links.homepage || undefined,
+		keywords: data.package.keywords,
+		repository: data.package.links.repository || undefined,
+		downloads: data.downloads.monthly,
+	}));
 
 /**
  * Gets details for a package from the npm registry
  *
  * @param {string} pkg Name of the package published to npm
- * @returns {Promise<any>} JSON data as returned by the npm registry
+ * @returns JSON data as returned by the npm registry
  */
-export function fetchDetailsForPackage(pkg) {
-	return fetchJson(`${REGISTRY_BASE_URL}${pkg}`);
+export async function fetchPackageCreationTime(pkg) {
+	const registryData = await fetchJson(`${REGISTRY_BASE_URL}${pkg}`);
+	const result = npmRegistrySchema.safeParse(registryData);
+	if (result.success) {
+		return result.data;
+	}
+	const { message, path } = result.error.issues[0];
+	console.error(`Failed to parse metadata for "${pkg}": ${message} at ${path.join('.')}`);
+	return;
 }
 
 /**
  * Searches npm for a specific keyword and returns a map, keyed by package name.
  *
- * @param {string} keyword The keyword used to search npm, ex: `astro-component`
+ * @param {string[]} keywords The keywords used to search npm, ex: `astro-component`
  * @param {string | undefined} ranking The sort order for results, default: `quality`
- * @returns {Promise<Map<string, any>>} Map of search results, keyed by package name
+ * @returns Array of search results
  */
-export async function searchByKeyword(keyword, ranking = "quality") {
+export async function searchByKeywords(keywords, ranking = 'quality') {
 	const objects = [];
-	let total = -1;
-	let page = 0;
 
-	do {
-		const url = new URL(`${REGISTRY_BASE_URL}-/v1/search`);
-		url.searchParams.set("text", `keywords:${keyword}`);
-		url.searchParams.set("ranking", ranking);
-		url.searchParams.set("size", PAGE_SIZE);
-		url.searchParams.set("from", page++ * PAGE_SIZE);
+	for (const keyword of keywords) {
+		const keywordObjects = [];
+		let total = -1;
+		let page = 0;
 
-		const results = await fetchJson(url.toString());
+		do {
+			const url = new URL(`${REGISTRY_BASE_URL}-/v1/search`);
+			url.searchParams.set('text', `keywords:${keyword}`);
+			url.searchParams.set('ranking', ranking);
+			url.searchParams.set('size', String(PAGE_SIZE));
+			url.searchParams.set('from', String(page++ * PAGE_SIZE));
 
-		// just in case, bail if no objects were returned for the page
-		if (results.objects.length === 0) {
-			break;
-		}
+			const results = await fetchJson(url.toString());
 
-		objects.push(...results.objects);
-		total = results.total;
-	} while (total > objects.length);
+			// just in case, bail if no objects were returned for the page
+			if (results.objects.length === 0) {
+				break;
+			}
 
-	return objects
-		.filter(({ package: pkg }) => {
+			keywordObjects.push(...results.objects);
+			total = results.total;
+		} while (total > keywordObjects.length);
+
+		objects.push(...keywordObjects);
+	}
+
+	const packages = z
+		.array(npmSearchObjectSchema)
+		.parse(objects)
+		.filter(({ repository, name }) => {
 			// remove any published forks of official @astrojs integrations
-			return (
-				pkg.links.repository !== "https://github.com/withastro/astro" ||
-				pkg.name.startsWith("@astrojs/")
-			);
-		})
-		.reduce((acc, next) => {
-			acc.set(next.package.name, next);
-			return acc;
-		}, new Map());
+			return !repository?.includes('github.com/withastro/astro') || name.startsWith('@astrojs/');
+		});
+
+	// deduplicate packages in case multiple keywords lead to the same package
+	return [...new Map(packages.map((pkg) => [pkg.name, pkg])).values()];
 }
